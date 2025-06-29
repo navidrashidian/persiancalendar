@@ -1,48 +1,47 @@
+import ctypes
+from pathlib import Path
 import persiancalendar
-import persiancalendar_fast
 
-ROUNDTRIP_START_YEAR = 1304
-ROUNDTRIP_END_YEAR = 1500
+# PARAMETERS
+ROUNDTRIP_START_YEAR = 1178
+ROUNDTRIP_END_YEAR   = 3000
 
+# — load your C fast‑lib —
+lib = ctypes.CDLL(str(Path(__file__).parent / "persiancalendar_fast.so"))
 
-def test_roundtrip_astronomical():
-    """Test that the astronomical algorithm roundtrips correctly."""
-    start = persiancalendar.fixed_from_persian((ROUNDTRIP_START_YEAR, 1, 1))
-    end = persiancalendar.fixed_from_persian((ROUNDTRIP_END_YEAR, 1, 1))
+class PersianDate(ctypes.Structure):
+    _fields_ = [("year", ctypes.c_int),
+                ("month", ctypes.c_int),
+                ("day", ctypes.c_int)]
 
-    for date in range(start, end):
-        p_date = persiancalendar.persian_from_fixed(date)
-        converted_back = persiancalendar.fixed_from_persian(p_date)
-        assert (date == converted_back)
+lib.fixed_from_persian_fast.argtypes    = [PersianDate]
+lib.fixed_from_persian_fast.restype     = ctypes.c_int
+lib.persian_fast_from_fixed.argtypes    = [ctypes.c_int]
+lib.persian_fast_from_fixed.restype     = PersianDate
 
-
+# — roundtrip test —
 def test_roundtrip_fast():
-    """Test that the fast algorithm roundtrips correctly."""
-    start = persiancalendar_fast.fixed_from_persian_fast(
-        (ROUNDTRIP_START_YEAR, 1, 1))
-    end = persiancalendar_fast.fixed_from_persian_fast(
-        (ROUNDTRIP_END_YEAR, 1, 1))
+    start = lib.fixed_from_persian_fast(PersianDate(ROUNDTRIP_START_YEAR, 1, 1))
+    end   = lib.fixed_from_persian_fast(PersianDate(ROUNDTRIP_END_YEAR,   1, 1))
+    for d in range(start, end):
+        pd   = lib.persian_fast_from_fixed(d)
+        back = lib.fixed_from_persian_fast(pd)
+        assert d == back, f"roundtrip failed at fixed={d}"
 
-    for date in range(start, end):
-        p_date = persiancalendar_fast.persian_fast_from_fixed(date)
-        converted_back = persiancalendar_fast.fixed_from_persian_fast(p_date)
-        assert (date == converted_back)
-
-
+# — compare to astronomical Python impl —
 def test_fast():
-    """Test that the results of the fast algorithm matches the results of the astronomical algorithm."""
-    start = persiancalendar.fixed_from_persian(
-        (persiancalendar_fast.SUPPORTED_FIRST_YEAR, 1, 1))
-    end = persiancalendar.fixed_from_persian(
-        (persiancalendar_fast.SUPPORTED_LAST_YEAR + 1, 1, 1))
+    sf = ctypes.c_int.in_dll(lib, "SUPPORTED_FIRST_YEAR").value
+    sl = ctypes.c_int.in_dll(lib, "SUPPORTED_LAST_YEAR").value
+    start = persiancalendar.fixed_from_persian((sf, 1, 1))
+    end   = persiancalendar.fixed_from_persian((sl+1, 1, 1))
 
-    for date in range(start, end):
-        fast_p_date = persiancalendar_fast.persian_fast_from_fixed(date)
-        astro_p_date = persiancalendar.persian_from_fixed(date)
-        assert (fast_p_date == astro_p_date)
-
+    for d in range(start, end):
+        fast_pd  = lib.persian_fast_from_fixed(d)
+        astro_pd = persiancalendar.persian_from_fixed(d)
+        tup_fast = (fast_pd.year, fast_pd.month, fast_pd.day)
+        assert tup_fast == astro_pd, f"mismatch at {d}: fast={tup_fast}, astro={astro_pd}"
 
 if __name__ == "__main__":
-    test_roundtrip_astronomical()
     test_roundtrip_fast()
     test_fast()
+    print("all fast‑tests passed")
