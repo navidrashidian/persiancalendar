@@ -110,13 +110,13 @@ int fixed_from_gregorian(GregorianDate g_date) {
         + day);  // Days so far this month.
 }
 
-int fixed_from_persian_fast(PersianDate pd) {
-    int new_year = PERSIAN_EPOCH - 1 + 365 * (pd.year - 1) + (8 * pd.year + 21) / 33;
-    if (is_non_leap_correction(pd.year - 1)) new_year -= 1;
+int fixed_from_persian_fast(PersianDate p_date) {
+    int new_year = PERSIAN_EPOCH - 1 + 365 * (p_date.year - 1) + (8 * p_date.year + 21) / 33;
+    if (is_non_leap_correction(p_date.year - 1)) new_year -= 1;
     return (new_year - 1) /* Days in prior years. */
         /* Days in prior months this year. */
-       + (pd.month <= 7 ? 31 * (pd.month - 1) : 30 * (pd.month - 1) + 6)
-       + pd.day; // Days so far this month.
+       + (p_date.month <= 7 ? 31 * (p_date.month - 1) : 30 * (p_date.month - 1) + 6)
+       + p_date.day; // Days so far this month.
 }
 
 int div_ceil(int a, int b) {

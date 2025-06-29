@@ -17,7 +17,7 @@ typedef struct {
 } GregorianDate;
 
 int fixed_from_gregorian(GregorianDate g_date);
-int fixed_from_persian_fast(PersianDate pd);
+int fixed_from_persian_fast(PersianDate p_date);
 PersianDate persian_fast_from_fixed(int date);
 
 #endif
